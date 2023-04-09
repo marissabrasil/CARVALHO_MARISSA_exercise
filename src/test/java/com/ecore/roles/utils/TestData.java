@@ -82,6 +82,12 @@ public class TestData {
         return GIANNI_USER(true);
     }
 
+    public static User GENERIC_USER() {
+        return User.builder()
+                .id(UUID_4)
+                .displayName("testUser").build();
+    }
+
     public static Membership DEFAULT_MEMBERSHIP() {
         return Membership.builder()
                 .id(DEFAULT_MEMBERSHIP_UUID)

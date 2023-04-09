@@ -57,3 +57,4 @@ To apply the fixes for code style issues
 ```shell
 mvn spotless:apply
 ```
+
