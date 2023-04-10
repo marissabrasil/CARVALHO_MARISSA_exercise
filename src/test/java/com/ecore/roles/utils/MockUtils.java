@@ -20,7 +20,7 @@ public class MockUtils {
 
     public static void mockGetUserById(MockRestServiceServer mockServer, UUID userId, User user) {
         try {
-            mockServer.expect(requestTo("http://test.com/users/" + userId))
+            mockServer.expect(ExpectedCount.manyTimes(), requestTo("http://test.com/users/" + userId))
                     .andExpect(method(HttpMethod.GET))
                     .andRespond(
                             withStatus(HttpStatus.OK)
@@ -42,5 +42,15 @@ public class MockUtils {
         } catch (JsonProcessingException e) {
             e.printStackTrace();
         }
+    }
+
+    public static void mockGetTeamByIdAndUserById(
+            MockRestServiceServer mockServer,
+            UUID teamId,
+            Team team,
+            UUID userId,
+            User user) {
+        mockGetTeamById(mockServer, teamId, team);
+        mockGetUserById(mockServer, userId, user);
     }
 }

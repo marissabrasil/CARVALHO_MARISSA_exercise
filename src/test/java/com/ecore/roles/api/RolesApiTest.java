@@ -16,20 +16,13 @@ import org.springframework.web.client.RestTemplate;
 import java.util.Optional;
 
 import static com.ecore.roles.utils.MockUtils.mockGetTeamById;
+import static com.ecore.roles.utils.MockUtils.mockGetTeamByIdAndUserById;
 import static com.ecore.roles.utils.RestAssuredHelper.createMembership;
 import static com.ecore.roles.utils.RestAssuredHelper.createRole;
 import static com.ecore.roles.utils.RestAssuredHelper.getRole;
 import static com.ecore.roles.utils.RestAssuredHelper.getRoles;
 import static com.ecore.roles.utils.RestAssuredHelper.sendRequest;
-import static com.ecore.roles.utils.TestData.DEFAULT_MEMBERSHIP;
-import static com.ecore.roles.utils.TestData.DEVELOPER_ROLE;
-import static com.ecore.roles.utils.TestData.DEVOPS_ROLE;
-import static com.ecore.roles.utils.TestData.GIANNI_USER_UUID;
-import static com.ecore.roles.utils.TestData.ORDINARY_CORAL_LYNX_TEAM;
-import static com.ecore.roles.utils.TestData.ORDINARY_CORAL_LYNX_TEAM_UUID;
-import static com.ecore.roles.utils.TestData.PRODUCT_OWNER_ROLE;
-import static com.ecore.roles.utils.TestData.TESTER_ROLE;
-import static com.ecore.roles.utils.TestData.UUID_1;
+import static com.ecore.roles.utils.TestData.*;
 import static io.restassured.RestAssured.when;
 import static java.lang.String.format;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -53,7 +46,7 @@ public class RolesApiTest {
     }
 
     @BeforeEach
-    void setUp() {
+    public void setUp() {
         mockServer = MockRestServiceServer.createServer(restTemplate);
         RestAssuredHelper.setUp(port);
         Optional<Role> devOpsRole = roleRepository.findByName(DEVOPS_ROLE().getName());
@@ -61,50 +54,48 @@ public class RolesApiTest {
     }
 
     @Test
-    void shouldFailWhenPathDoesNotExist() {
-        sendRequest(when()
-                .get("/v1/role")
-                .then())
-                        .validate(404, "Not Found");
+    public void shouldExecuteWhenPathExist() {
+        sendRequest(when().get("/v1/roles").then()).statusCode(200);
     }
 
     @Test
-    void shouldCreateNewRole() {
+    public void shouldCreateNewRole() {
         Role expectedRole = DEVOPS_ROLE();
 
         RoleDto actualRole = createRole(expectedRole)
                 .statusCode(201)
                 .extract().as(RoleDto.class);
 
+        assertThat(actualRole.getId()).isNotNull();
         assertThat(actualRole.getName()).isEqualTo(expectedRole.getName());
     }
 
     @Test
-    void shouldFailToCreateNewRoleWhenNull() {
+    public void shouldFailToCreateNewRoleWhenNull() {
         createRole(null)
                 .validate(400, "Bad Request");
     }
 
     @Test
-    void shouldFailToCreateNewRoleWhenMissingName() {
+    public void shouldFailToCreateNewRoleWhenMissingName() {
         createRole(Role.builder().build())
                 .validate(400, "Bad Request");
     }
 
     @Test
-    void shouldFailToCreateNewRoleWhenBlankName() {
+    public void shouldFailToCreateNewRoleWhenBlankName() {
         createRole(Role.builder().name("").build())
                 .validate(400, "Bad Request");
     }
 
     @Test
-    void shouldFailToCreateNewRoleWhenNameAlreadyExists() {
+    public void shouldFailToCreateNewRoleWhenNameAlreadyExists() {
         createRole(DEVELOPER_ROLE())
                 .validate(400, "Role already exists");
     }
 
     @Test
-    void shouldGetAllRoles() {
+    public void shouldGetAllRoles() {
         RoleDto[] roles = getRoles()
                 .extract().as(RoleDto[].class);
 
@@ -115,7 +106,7 @@ public class RolesApiTest {
     }
 
     @Test
-    void shouldGetRoleById() {
+    public void shouldGetRoleById() {
         Role expectedRole = DEVELOPER_ROLE();
 
         getRole(expectedRole.getId())
@@ -124,15 +115,16 @@ public class RolesApiTest {
     }
 
     @Test
-    void shouldFailToGetRoleById() {
+    public void shouldFailToGetRoleById() {
         getRole(UUID_1)
                 .validate(404, format("Role %s not found", UUID_1));
     }
 
     @Test
-    void shouldGetRoleByUserIdAndTeamId() {
+    public void shouldGetRoleByUserIdAndTeamId() {
         Membership expectedMembership = DEFAULT_MEMBERSHIP();
-        mockGetTeamById(mockServer, ORDINARY_CORAL_LYNX_TEAM_UUID, ORDINARY_CORAL_LYNX_TEAM());
+        mockGetTeamByIdAndUserById(mockServer, expectedMembership.getTeamId(), ORDINARY_CORAL_LYNX_TEAM(),
+                expectedMembership.getUserId(), GIANNI_USER());
         createMembership(expectedMembership)
                 .statusCode(201);
 
@@ -142,21 +134,43 @@ public class RolesApiTest {
     }
 
     @Test
-    void shouldFailToGetRoleByUserIdAndTeamIdWhenMissingUserId() {
+    public void shouldFailToGetRoleByUserIdAndTeamIdWhenMissingUserId() {
         getRole(null, ORDINARY_CORAL_LYNX_TEAM_UUID)
                 .validate(400, "Bad Request");
     }
 
     @Test
-    void shouldFailToGetRoleByUserIdAndTeamIdWhenMissingTeamId() {
+    public void shouldFailToGetRoleByUserIdAndTeamIdWhenMissingTeamId() {
         getRole(GIANNI_USER_UUID, null)
                 .validate(400, "Bad Request");
     }
 
     @Test
-    void shouldFailToGetRoleByUserIdAndTeamIdWhenItDoesNotExist() {
+    public void shouldFailToGetRoleByUserIdAndTeamIdWhenMissingAll() {
+        getRole(null, null)
+                .validate(400, "Bad Request");
+    }
+
+    @Test
+    public void shouldFailToGetRoleByUserIdAndTeamIdWhenTeamDoesNotExist() {
         mockGetTeamById(mockServer, UUID_1, null);
         getRole(GIANNI_USER_UUID, UUID_1)
                 .validate(404, format("Team %s not found", UUID_1));
+    }
+
+    @Test
+    public void shouldFailToGetRoleByUserIdAndTeamIdWhenUserDoesNotExist() {
+        mockGetTeamByIdAndUserById(mockServer, ORDINARY_CORAL_LYNX_TEAM_UUID, ORDINARY_CORAL_LYNX_TEAM(),
+                UUID_1, null);
+        getRole(UUID_1, ORDINARY_CORAL_LYNX_TEAM_UUID)
+                .validate(404, format("User %s not found", UUID_1));
+    }
+
+    @Test
+    public void shouldFailToGetRoleByUserIdAndTeamIdWhenMembershipDoesNotExist() {
+        mockGetTeamByIdAndUserById(mockServer, ORDINARY_CORAL_LYNX_TEAM_UUID, ORDINARY_CORAL_LYNX_TEAM(),
+                UUID_4, GENERIC_USER());
+        getRole(UUID_4, ORDINARY_CORAL_LYNX_TEAM_UUID)
+                .validate(404, "Membership not found");
     }
 }
